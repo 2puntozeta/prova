@@ -1,9 +1,13 @@
 
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+const SUPABASE_URL = "https://qhgnyldwpjitiigxvzed.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFoZ255bGR3cGppdGlpZ3h2emVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTA1MjcsImV4cCI6MjA4OTE2NjUyN30.Vc9bz9Ntj-bMpiHHvKuNWVs8OMB6Jx329eYL7Qw25Ek";
 
-const SUPABASE_URL = "https://jkenultexkujajrdnqsy.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprZW51bHRleGt1amFqcmRucXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTEwMjQsImV4cCI6MjA4OTI2NzAyNH0.28yqUN6ym5n9HPiQovLneZCvCnzg7El3famWrYoiE4U";
-const invalidConfig = false;
+const invalidConfig =
+  !SUPABASE_URL ||
+  !SUPABASE_ANON_KEY ||
+  SUPABASE_URL.includes("INCOLLA_QUI") ||
+  SUPABASE_ANON_KEY.includes("INCOLLA_QUI");
 
 const state = {
   session: null,
@@ -28,26 +32,6 @@ const euro = (v) => new Intl.NumberFormat("it-IT",{style:"currency",currency:"EU
 const n = (v) => Number(v || 0);
 const todayStr = () => new Date().toISOString().slice(0,10);
 const isSupervisor = () => state.profile?.global_role === "supervisor";
-
-function showFatalError(message){
-  const boot = document.getElementById("bootScreen");
-  if(boot){
-    boot.classList.remove("hidden");
-    const card = boot.querySelector(".login-card");
-    if(card){
-      card.innerHTML = `
-        <div class="brand" style="margin-bottom:18px;">
-          <div class="logo">G2</div>
-          <div><h1>Gestionale Privato 2.0</h1><p>Errore di avvio</p></div>
-        </div>
-        <h1>Errore di caricamento</h1>
-        <p style="white-space:pre-wrap">${String(message)}</p>
-      `;
-    }
-  }
-}
-window.addEventListener("error", (e) => showFatalError(e.message || "Errore JavaScript"));
-window.addEventListener("unhandledrejection", (e) => showFatalError(e.reason?.message || e.reason || "Promise rifiutata"));
 
 function showGlobalMessage(message, type="ok"){
   $("globalFeedback").innerHTML = `<div class="alert ${type === "ok" ? "okline" : ""}">${message}</div>`;
@@ -200,6 +184,7 @@ function computeGlobalAlerts(){
 }
 
 async function initSupabase(){
+  if(invalidConfig){ hideAllViews(); $("bootScreen").classList.remove("hidden"); return false; }
   supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const { data: { session } } = await supabase.auth.getSession();
   state.session = session;
@@ -615,70 +600,13 @@ function renderBookings(){
   document.querySelectorAll(".booking-edit-btn").forEach(btn => btn.addEventListener("click", () => editBookingById(btn.dataset.bookingId)));
   document.querySelectorAll(".booking-delete-btn").forEach(btn => btn.addEventListener("click", () => deleteBookingById(btn.dataset.bookingId)));
 }
-
-function bindEvents(){
-  document.querySelectorAll(".nav-btn[data-section]").forEach(btn => btn.addEventListener("click", () => navigate(btn.dataset.section)));
-  document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click", () => setAuthTab(btn.dataset.authTab)));
-
-  const byId = (id) => document.getElementById(id);
-
-  byId("loginBtn")?.addEventListener("click", login);
-  byId("registerBtn")?.addEventListener("click", registerCompany);
-  byId("logoutBtn")?.addEventListener("click", logout);
-  byId("selectorLogoutBtn")?.addEventListener("click", logout);
-
-  byId("enterCompanyBtn")?.addEventListener("click", async () => {
-    if(!selectedCompanyId){ alert("Seleziona una ditta."); return; }
-    await openCompany(selectedCompanyId);
-  });
-
-  byId("switchCompanyBtn")?.addEventListener("click", () => {
-    if(isSupervisor() || state.memberships.length > 1) renderCompanySelector();
-  });
-
-  byId("saveDayBtn")?.addEventListener("click", saveDaily);
-  byId("saveCashInitBtn")?.addEventListener("click", saveCashInitial);
-  byId("saveMovBtn")?.addEventListener("click", saveCashMovement);
-  byId("saveFornBtn")?.addEventListener("click", saveSupplier);
-  byId("saveFornMovBtn")?.addEventListener("click", saveSupplierMovement);
-  byId("saveDipBtn")?.addEventListener("click", saveEmployee);
-  byId("saveDipMovBtn")?.addEventListener("click", saveEmployeeMovement);
-  byId("saveBanBtn")?.addEventListener("click", saveBooking);
-  byId("runReportBtn")?.addEventListener("click", runMonthlyReport);
-
-  byId("refreshBtn")?.addEventListener("click", () => refreshData("Dati aggiornati dal cloud."));
-  byId("backupBtn")?.addEventListener("click", exportBackup);
-  byId("importFile")?.addEventListener("change", (e) => e.target.files[0] && importBackup(e.target.files[0]));
-
-  byId("closeAlertModalBtn")?.addEventListener("click", closeAlertModal);
-  byId("editAlertDayBtn")?.addEventListener("click", editSelectedAlertDay);
-
-  byId("closeConfirmSaveModalBtn")?.addEventListener("click", closeConfirmSaveModal);
-  byId("reviewDayBtn")?.addEventListener("click", closeConfirmSaveModal);
-  byId("forceSaveDayBtn")?.addEventListener("click", forceSavePendingDay);
-
-  byId("cardFornitori")?.addEventListener("click", () => navigate("fornitori"));
-  byId("cardCoperti")?.addEventListener("click", () => navigate("giornaliera"));
-  byId("cardIncasso")?.addEventListener("click", () => navigate("giornaliera"));
-  byId("cardAlert")?.addEventListener("click", () => {
-    navigate("dashboard");
-    const first = document.querySelector(".alert-row");
-    if(first) first.scrollIntoView({behavior:"smooth", block:"center"});
-  });
-}
-
 async function main(){
-  try{
-    bindEvents();
-    seedFields();
-    const ok = await initSupabase();
-    if(!ok) return;
-    supabase.auth.onAuthStateChange(async (_event, session) => { state.session = session; });
-    if(state.session) await bootstrapAfterAuth();
-    else { hideAllViews(); $("authView").classList.remove("hidden"); }
-  } catch (err){
-    console.error(err);
-    showFatalError(err?.message || err);
-  }
+  bindEvents();
+  seedFields();
+  const ok = await initSupabase();
+  if(!ok) return;
+  supabase.auth.onAuthStateChange(async (_event, session) => { state.session = session; });
+  if(state.session) await bootstrapAfterAuth();
+  else { hideAllViews(); $("authView").classList.remove("hidden"); }
 }
 main();
